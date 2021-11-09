@@ -1,0 +1,132 @@
+---
+title: "esm206_lab7"
+author: "Jessica West"
+date: "11/9/2021"
+output: html_document
+---
+
+```{r setup, include=TRUE, message = FALSE, results = FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warnings = FALSE)
+
+library(tidyverse)
+library(palmerpenguins)
+library(GGally)
+library(kableExtra)
+library(modelsummary)
+library(stargazer)
+library(devtools) # I added
+library(calecopal) # I added
+```
+
+## Explore Penguins
+
+Use `GGally:ggpairs90` to create a pairs plot.
+
+```{r}
+ggpairs(penguins)   # shows various graphs explaining variable relationships
+```
+
+That's kind of overkill- let's simplify the variables that we include in our ggpairs plot:
+
+-species
+-bill_length_mm through body_mass_g
+
+```{r}
+penguins %>% 
+  select(species, bill_length_mm:body_mass_g) %>% 
+  ggpairs(aes(color = species)) +
+  scale_fill_manual(values = cal_palette("oak"))
+```
+
+## Multiple Linear Regression
+
+We are going to try and understand the relationship between multiple predictor variables and an outcome which is penguin body mass.
+
+The different predictor variables we're going to try are:
+
+- species
+- flipper length
+- sex
+- bill depth
+
+
+### Model 1
+
+Model body mass based only on flipper length and bill depth
+
+```{r}
+model_1 <- lm(body_mass_g ~ flipper_length_mm + bill_depth_mm, data = penguins)
+
+# Call model by name to return only coefficients:
+model_1
+
+# Pull up stats from test (use p-value for bill_depth_mm in this example)
+summary(model_1)       
+```
+WHAT THIS MEANS (Stats!)
+
+Coefficient: If everything else is held constant, we expect that for each 1 mm increase in flipper length, penguin body mass is expected to increase by 51.54 g, on average.
+
+P-value: p-value > 0.05 : not statistically significant, accept the null hypothesis, reject the alternative hypothesis
+
+R-squared: 76% of variants in bill depth is explained by this model.
+
+
+
+Actually -- we think that a model for penguin mass should contain variables species, flipper length, and penguin sex.
+
+```{r}
+model_2 <- lm(body_mass_g ~ flipper_length_mm + species + sex, data = penguins)
+
+# Let's check out the coefficients:
+summary(model_2) 
+```
+Reference levels: species is Adelie (not listed above), sex is female (not listed above)
+
+Species (Gentoo) - If everything else is held constant, on average expect Gentoo penguin to be 836g larger than an Adelie penguin. 
+
+Gender (Male) - If everything else is held constant, on average expect male penguins to be 530g larger than an female penguin. 
+
+
+```{r}
+ggplot(data = penguins, aes(x = flipper_length_mm, y = body_mass_g)) +
+  geom_point(aes(color = species)) +
+  facet_wrap(~sex) +
+  scale_fill_manual(values = cal_palette("oak"))
+```
+
+### Couple Ways to Get and Report MLR Model Outcomes
+
+```{r}
+penguin_model2_coef <- tidy(model_2)
+penguin_model2_coef
+```
+
+Write inline code `r` that spits out the coefficient (estimate) for Gentoo:
+
+`r penguin_model2_coef$estimate[4]` <- `r` + *dataset* + *$* + *column name* + *[where Gentoo value is in table]*
+
+
+## Look at Model Diagnostics
+
+Use the plot() function.
+
+```{r}
+plot(model_2)
+```
+
+## Report Model Outputs in Summary Table
+
+Use modelsummary:
+```{r}
+modelsummary(model_2)
+```
+
+Use stargazer:
+```{r, results = "asis"}
+
+#Must add the above to code chunk when using stargazer
+
+stargazer(model_2, type = "html")   # Won't look pretty here - used for HTML output of model stats in Knitted doc
+```
+
